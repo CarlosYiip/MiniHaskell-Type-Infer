@@ -1,0 +1,1 @@
+[Bind "main" (TypeCon Bool) [] (Let [Bind "eq" (Arrow (TypeCon Int) (Arrow (TypeCon Int) (TypeCon Bool))) [] (Letfun (Bind "eq" (Arrow (TypeCon Int) (Arrow (TypeCon Int) (TypeCon Bool))) ["x","y"] (App (App (Prim Eq) (Var "x")) (Var "y"))))] (App (App (Var "eq") (Num 3)) (Num 4)))]

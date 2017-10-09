@@ -1,0 +1,9 @@
+[Bind "main" (TypeCon Int) [] (
+
+Letrec [Bind "a" (TypeCon Int) [] (Var "b"),Bind "b" (TypeCon Int) [] (Var "c"),Bind "c" (TypeCon Int) [] (Num 7)] 
+
+(App (App (Prim Add) (Var "c")) (Var "a"))
+
+
+
+)]

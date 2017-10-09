@@ -1,0 +1,1 @@
+[Bind "main" (TypeCon Int) [] (Let [Bind "a" (TypeCon Int) [] (Num 3),Bind "b" (TypeCon Int) [] (Num 2)] (App (App (Prim Add) (Var "a")) (Var "b")))]

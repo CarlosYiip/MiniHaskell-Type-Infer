@@ -1,0 +1,14 @@
+[Bind "main" (TypeCon Int) [] 
+
+(Let 
+
+[Bind "y" (TypeCon Int) [] (Num 3)] 
+
+
+(Let [Bind "f" (Arrow (TypeCon Int) (TypeCon Int)) ["x"]   (App (App (Prim Add) (Var "x")) (Num 1))  ] 
+
+
+(App (Var "f") (Var "y"))
+)
+)
+]
