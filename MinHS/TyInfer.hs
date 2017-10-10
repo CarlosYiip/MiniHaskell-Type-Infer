@@ -263,10 +263,13 @@ inferExp g (Case e _) = typeError MalformedAlternatives
 
 
 --------------------------------------------------------------------- Recursive Functions ----------------------------------------------------------
-inferExp g exp@(Letfun (Bind f_name _ [v_name] f_body)) = do
+inferExp g exp@(Letfun (Bind f_name _ params f_body)) = do
     alpha1 <- fresh
     alpha2 <- fresh
+    let v_name = head params
     let g' = E.addAll g [(v_name, Ty alpha1), (f_name, Ty alpha2)]
+
+    --------
     (f_body', t, subst) <- inferExp g' f_body
 
     u <- unify (substitute subst alpha2) (Arrow (substitute subst alpha1) t) 
