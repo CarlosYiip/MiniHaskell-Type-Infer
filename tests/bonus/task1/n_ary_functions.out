@@ -1,4 +1,2 @@
-main :: Int
-	= let sum :: (Int -> Int -> Int -> Int)
-		= letfun sum :: (Int -> Int -> Int -> Int) x y z = x + y + z;
-	in sum 4 4 4;
+main :: Int = let sum :: (Int -> Int -> Int -> Int) = (letfun sum :: (Int -> Int -> Int -> Int) x y z = (+) ((+) x y) z);
+              in sum 4 4 4;

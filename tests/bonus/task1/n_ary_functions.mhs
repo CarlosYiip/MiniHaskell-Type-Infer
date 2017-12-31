@@ -1,4 +1,4 @@
 main
-	= let sum 
+	= let sum
 		= letfun sum x y z = x + y + z;
 	in sum 4 4 4;

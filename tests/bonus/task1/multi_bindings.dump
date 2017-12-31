@@ -1,1 +1,6 @@
-[Bind "main" Nothing [] (Let [Bind "a" Nothing [] (Num 3),Bind "b" Nothing [] (Num 2)] (App (App (Prim Add) (Var "a")) (Var "b")))]
+[Bind "main" Nothing [] 
+(Let 
+[Bind "a" Nothing [] (Num 3),Bind "b" Nothing [] (Num 2)] 
+(App (App (Prim Add) (Var "a")) (Var "b"))
+)
+]

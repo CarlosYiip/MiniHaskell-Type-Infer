@@ -128,8 +128,7 @@ unify (Prod t1 t2) (Prod t1' t2') = do
     let subst3 = subst1 `mappend` subst2
     return subst3
 
-unify t1 t2 = error ("can't unify types")
--- unify t1 t2 = error ("can't unify types " ++ pprT t1 ++ " and " ++pprT t2)
+unify t1 t2 = error ("can't unify types " ++ pprT t1 ++ " and " ++pprT t2)
 
 --------------------------------------------------------------------- pprT ----------------------------------------------------------------
 pprT :: Type -> String 
@@ -224,8 +223,6 @@ inferExp g exp@(If e e1 e2) = do
     return (newExp, res_t, final_subst)
 
 --------------------------------------------------------------------- Case ----------------------------------------------------------------
-
--- -- Note: this is the only case you need to handle for case expressions
 inferExp g (Case e [Alt "Inl" [x] e1, Alt "Inr" [y] e2]) = do
     (e', t, substT) <- inferExp g e
 
@@ -256,80 +253,114 @@ inferExp g (Case e [Alt "Inl" [x] e1, Alt "Inr" [y] e2]) = do
 
     return (newExp, res_t, final_subst)
 
-
-
 inferExp g (Case e _) = typeError MalformedAlternatives
 
 
 
 --------------------------------------------------------------------- Recursive Functions ----------------------------------------------------------
 inferExp g exp@(Letfun (Bind f_name _ params f_body)) = do
-    alpha1 <- fresh
-    alpha2 <- fresh
-    let v_name = head params
-    let g' = E.addAll g [(v_name, Ty alpha1), (f_name, Ty alpha2)]
+    names_and_types <- freshes (params ++ [f_name])
+    let names_and_Qtypes = addQ names_and_types
 
-    --------
+    let g' = E.addAll g names_and_Qtypes
     (f_body', t, subst) <- inferExp g' f_body
 
-    u <- unify (substitute subst alpha2) (Arrow (substitute subst alpha1) t) 
+    let types = extractType names_and_types
+    let left  = last types
+    let right = nestedArrows (take ((length types) - 1) types) t
+
+    u <- unify (substitute subst left) (substitute subst right)
 
     let final_subst = u `mappend` subst
-    let res_t = substitute u (Arrow (substitute subst alpha1) t)
+    let res_t = substitute final_subst right
+    let newExp = Letfun (Bind f_name (Just $ Ty res_t) params f_body')
 
-    let newExp = Letfun (Bind f_name (Just $ Ty res_t) [v_name] f_body')
     return (newExp, res_t, final_subst)
 
 --------------------------------------------------------------------- Let Bindings ----------------------------------------------------------------
-inferExp g (Let [Bind v_name _ [] e1] e2) = do
-    (e1', t, substT) <- inferExp g e1
+inferExp g (Let bindings e2) = do
+    all_exp_type_subst <- multiInfer g bindings
+    let all_subst = combineSubst all_exp_type_subst
 
-    let substT_g = substGamma substT g
-    let g' = E.add substT_g (v_name, (generalise substT_g t))
-
+    let substT_g = substGamma all_subst g
+    let g' = E.addAll substT_g (multiGeneralise substT_g all_exp_type_subst)
 
     (e2', t', substT') <- inferExp g' e2
 
-    let final_subst = substT `mappend` substT'
-    let newExp = Let [Bind v_name (E.lookup g' v_name) [] e1'] e2'
+    let final_subst = substT' `mappend` all_subst
+    let newExp = Let (newBindings g' all_exp_type_subst) e2'
+ 
 
     return (newExp, t', final_subst)
 
-
----------------------------------------------------------------- N-ary Functions ----------------------------------------------------------------
-
-
-
----------------------------------------------------------------- Multi Let Bindings ----------------------------------------------------------------
-inferExp g exp@(Let bs e2) = do
-    
-    let g' = multibindings_helper g bs
-
-    return (exp, Base Int, emptySubst)
+--------------------------------------------------------------------- Recursive Bindings ----------------------------------------------------------------
+inferExp g (Letrec bindings e) = do    
+    g' <- unifyAll g bindings
+    (e', t', subst) <- inferExp g' e
+    let newExp = Letrec (newRecBindings g' bindings) e
+    return (newExp, t', subst)
 
 inferExp g _ = error "Implement me!"
 
 
-multibindings_helper :: Gamma -> [Bind] -> Gamma
-multibindings_helper g [] = g
-multibindings_helper g (b@(Bind v_name _ [] e1):bs) = error ("123")
 
 
+---------------------------------------------------------------- Helper Functions ----------------------------------------------------------------
+freshes :: [Id] -> TC [(Id, Type)]
+freshes [] = do 
+    return []
+freshes (i:is) = do
+    t <- fresh
+    fnames <- freshes is
+    return ((i, t) : fnames)
+
+addQ :: [(Id, Type)] -> [(Id, QType)]
+addQ [] = []
+addQ (tv@(x, t):tvs) = (x, Ty t) : addQ tvs
+
+extractType :: [(Id, Type)] -> [Type]
+extractType [] = []
+extractType (tv:tvs) = (snd tv) : extractType tvs
+
+nestedArrows :: [Type] -> Type -> Type
+nestedArrows [tv] t = Arrow tv t
+nestedArrows (tv:tvs) t = Arrow tv $ nestedArrows tvs t
+
+multiInfer :: Gamma -> [Bind] -> TC [(Id, Exp, Type, Subst)]
+multiInfer g [] = do
+    return []
+multiInfer g (b@(Bind v_name _ [] e):bs) = do
+    (e', t, subst) <- inferExp g e
+    others <- multiInfer g bs
+    return ((v_name, e', t, subst) : others)
+
+combineSubst :: [(Id, Exp, Type, Subst)] -> Subst
+combineSubst [] = emptySubst
+combineSubst (b@(_, _, _, subst):bs) = subst `mappend` combineSubst bs
+
+multiGeneralise :: Gamma -> [(Id, Exp, Type, Subst)] -> [(Id, QType)]
+multiGeneralise substT_g [] = []
+multiGeneralise substT_g (b@(i, _, t, _):bs) = [(i, (generalise substT_g t))] ++ (multiGeneralise substT_g bs)
+
+newBindings :: Gamma -> [(Id, Exp, Type, Subst)] -> [Bind]
+newBindings g [] = []
+newBindings g (b@(i, e, t, s):bs) = [Bind i (E.lookup g i) [] e] ++ (newBindings g bs)
 
 
+unifyAll :: Gamma -> [Bind] -> TC Gamma
+unifyAll g [Bind v_name _ [] e] = do
+    (e', t, subst) <- inferExp g e
+    let g' = E.add g (v_name, Ty t)
+    return g'
+unifyAll g (b@(Bind v_name _ [] e):bs) = do
+    g' <- unifyAll g bs
+    (e', t, subst) <- inferExp g' e
+    let g'' = E.add g' (v_name, Ty t)
+    return g''
 
-
-
-
-
-
-
-
-
-
-
-
-
+newRecBindings :: Gamma -> [Bind] -> [Bind]
+newRecBindings g [] = []
+newRecBindings g (b@(Bind v_name _ [] e):bs) = [Bind v_name (E.lookup g v_name) [] e] ++ (newRecBindings g bs)
 
 
 

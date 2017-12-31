@@ -1,0 +1,12 @@
+[Bind "main" Nothing [] 
+(Letrec [Bind "a" Nothing [] (Var "b"),Bind "b" Nothing [] (Var "c"),Bind "c" Nothing [] (Num 7)] 
+	
+(App (App (Prim Add) (Var "c")) (Var "a")))
+
+]
+
+
+
+main
+    = letrec b = c; c = 7;
+      in c + b;

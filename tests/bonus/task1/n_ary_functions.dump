@@ -1,7 +1,11 @@
 [Bind "main" Nothing [] 
-(Let 
-[Bind "sum" Nothing [] (Letfun (Bind "sum" Nothing ["x","y","z"] (App (App (Prim Add) (App (App (Prim Add) (Var "x")) (Var "y"))) (Var "z"))))] 
-(App (App (App (Var "sum") (Num 4)) (Num 4)) (Num 4))
-)
+
+(Let [Bind "sum" Nothing [] (Letfun (Bind "sum" Nothing ["x","y"] 
+
+(App (App (Prim Add) (Var "x")) (Var "y"))
+
+
+))] (App (App (Var "sum") (Num 4)) (Num 4)))
+
 
 ]
